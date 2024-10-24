@@ -2,7 +2,7 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-public class Server {
+public class Server implements Runnable { // Implementamos Runnable
     private int port;
     private ClientManager clientManager = new ClientManager();
     private MessageDispatcher messageDispatcher;
@@ -12,10 +12,14 @@ public class Server {
         messageDispatcher = new MessageDispatcher(clientManager.getClients());
     }
 
+    @Override
+    public void run() {
+        startServer(); // Ejecutamos el servidor dentro del método run()
+    }
 
     public void startServer() {
         try (ServerSocket serverSocket = new ServerSocket(port)) {
-            System.out.println("Servidor Corriendo..." + port);
+            System.out.println("Servidor corriendo en el puerto: " + port);
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
@@ -30,7 +34,7 @@ public class Server {
                 // Iniciamos el hilo
                 thread.start();
 
-                System.out.println("New client connected: " + clientId);
+                System.out.println("Nuevo cliente conectado: " + clientId);
             }
         } catch (IOException e) {
             e.printStackTrace();
