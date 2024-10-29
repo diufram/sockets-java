@@ -9,13 +9,17 @@ public class ClientHandler implements Runnable {
     private String clientId;
     private PrintWriter out;
     private BufferedReader in;
+    private MessageDispatcher messageDispatcher;
+    private volatile boolean running = true;  // Bandera para detener el hilo
 
-    public ClientHandler(Socket socket, String id) {
+    public ClientHandler(Socket socket, String id, MessageDispatcher messageDispatcher) {
         this.clientSocket = socket;
         this.clientId = id;
+        this.messageDispatcher = messageDispatcher;
+
         try {
-            out = new PrintWriter(clientSocket.getOutputStream(), true);
-            in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            this.out = new PrintWriter(clientSocket.getOutputStream(), true);
+            this.in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -26,27 +30,53 @@ public class ClientHandler implements Runnable {
     }
 
     public void sendMessage(String message) {
-        out.println(message);
+        if (out != null) {
+            out.println(message);
+        }
+    }
+
+    // Método para detener el hilo y cerrar el socket
+    public void stop() {
+        running = false;  // Cambia la bandera para detener el bucle
+        try {
+            if (clientSocket != null && !clientSocket.isClosed()) {
+                clientSocket.close();  // Cierra el socket para detener readLine()
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
     public void run() {
-        String inputLine;
+        System.out.println("Client connected: " + clientId);
+
         try {
-            while ((inputLine = in.readLine()) != null) {
+            String inputLine;
+            while (running && (inputLine = in.readLine()) != null) {
                 System.out.println("Received from " + clientId + ": " + inputLine);
-                // Puedes añadir aquí lógica para redirigir mensajes.
+                messageDispatcher.broadcastMessage(clientId, "From " + clientId + ": " + inputLine);
             }
         } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                in.close();
-                out.close();
-                clientSocket.close();
-            } catch (IOException e) {
-                e.printStackTrace();
+            if (running) {
+                e.printStackTrace(); // Imprime la excepción solo si el hilo no fue detenido intencionalmente
             }
+        } finally {
+            closeConnection();  // Asegúrate de cerrar el socket y los recursos
+        }
+    }
+
+    private void closeConnection() {
+        try {
+            if (in != null) in.close();
+            if (out != null) out.close();
+            if (clientSocket != null && !clientSocket.isClosed()) {
+                clientSocket.close();
+            }
+            System.out.println("Client " + clientId + " disconnected.");
+            messageDispatcher.removeClient(clientId); // Notifica a MessageDispatcher sobre la desconexión
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }

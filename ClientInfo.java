@@ -14,4 +14,10 @@ public class ClientInfo {
     public Thread getThread() {
         return thread;
     }
+
+    // Método para detener el hilo de forma segura
+    public void stopHandler() {
+        clientHandler.stop();  // Detener el bucle de lectura en ClientHandler
+        thread.interrupt();     // Interrumpir el hilo en caso de bloqueo
+    }
 }

@@ -9,7 +9,7 @@ public class Server implements Runnable { // Implementamos Runnable
 
     public Server(int port) {
         this.port = port;
-        messageDispatcher = new MessageDispatcher(clientManager.getClients());
+        messageDispatcher = new MessageDispatcher(clientManager);
     }
 
     @Override
@@ -24,16 +24,15 @@ public class Server implements Runnable { // Implementamos Runnable
             while (true) {
                 Socket clientSocket = serverSocket.accept();
                 String clientId = "Client" + clientManager.getClients().size();
-                ClientHandler clientHandler = new ClientHandler(clientSocket, clientId);
 
-                // Creamos el hilo y almacenamos ambos en la clase ClientInfo
+                // Crear ClientHandler y pasar MessageDispatcher
+                ClientHandler clientHandler = new ClientHandler(clientSocket, clientId, messageDispatcher);
+
+                // Crear e iniciar el hilo
                 Thread thread = new Thread(clientHandler);
-                ClientInfo clientInfo = new ClientInfo(clientHandler, thread);
-                clientManager.addClient(clientId, clientInfo);
+                clientManager.addClient(clientId, new ClientInfo(clientHandler, thread));
 
-                // Iniciamos el hilo
                 thread.start();
-
                 System.out.println("Nuevo cliente conectado: " + clientId);
             }
         } catch (IOException e) {
@@ -42,8 +41,8 @@ public class Server implements Runnable { // Implementamos Runnable
     }
 
     // Método para enviar mensajes a todos
-    public void broadcastMessage(String message) {
-        messageDispatcher.broadcastMessage(message);
+    public void broadcastMessage(String message,String clientId) {
+        messageDispatcher.broadcastMessage(clientId,message);
     }
 
     // Método para enviar un mensaje a un cliente específico
@@ -51,8 +50,15 @@ public class Server implements Runnable { // Implementamos Runnable
         messageDispatcher.sendMessageToClient(clientId, message);
     }
 
-    // Método para detener un hilo de cliente
-    public void stopClientThread(String clientId) {
-        clientManager.stopClientThread(clientId);
+      // Método para detener el hilo de un cliente específico
+      public void stopClientThread(String clientId) {
+        ClientInfo clientInfo = clientManager.getClientInfo(clientId);
+        if (clientInfo != null) {
+            clientInfo.stopHandler();  // Detener el hilo usando el método stopHandler en ClientInfo
+            clientManager.removeClient(clientId);  // Remover el cliente del manager
+            System.out.println("Cliente " + clientId + " ha sido desconectado.");
+        } else {
+            System.out.println("Cliente no encontrado: " + clientId);
+        }
     }
 }
