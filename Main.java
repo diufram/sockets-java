@@ -1,13 +1,19 @@
+import java.io.IOException;
+
 public class Main {
     public static void main(String[] args) {
         int port = 8000;
-        Server server = new Server(port);
+        int maxClients = 3;
 
-        // Inicia el servidor en un hilo separado
-        Thread serverThread = new Thread(server);
-        serverThread.start();
+        try {
+            ServidorTCP servidorTCP = new ServidorTCP(port, maxClients);
+            Thread serverThread = new Thread(servidorTCP);
+            serverThread.start(); // Inicia el servidor en un hilo independiente
 
-        System.out.println("Servidor iniciado en un hilo aparte.");
+            // Para detener el servidor cuando sea necesario, puedes llamar a:
+            // servidorTCP.detener();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
-
